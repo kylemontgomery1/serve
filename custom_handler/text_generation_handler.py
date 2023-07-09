@@ -69,7 +69,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         with zipfile.ZipFile(model_dir + "/vicuna-13b.zip", "r") as zip_ref:
             zip_ref.extractall(model_dir + "/model")
         
-        self.model = AutoModelForCausalLM.from_pretrained(model_dir + "/model", device_map = 'auto', torch_dtype=torch.float16)
+        self.model = AutoModelForCausalLM.from_pretrained(model_dir + "/model", torch_dtype=torch.float16).to(self.device)
         
         logger.info("Extracting Tokenizer")
         
