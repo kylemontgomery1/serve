@@ -6,10 +6,7 @@ from abc import ABC
 import numpy as np
 import random
 import timeit
-<<<<<<< HEAD
-=======
 import zipfile
->>>>>>> 3d90216f68a3839546dd86e876b96779f5382151
 
 import torch
 import transformers
