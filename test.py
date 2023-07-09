@@ -22,23 +22,4 @@ except Exception as e:
     ) from e
 result = response.json()
             
-<<<<<<< HEAD
 print(result)
-
-
-# import os
-# import openai
-# openai.api_key = "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"
-
-# completion = openai.ChatCompletion.create(
-#   model="gpt-3.5-turbo",
-#   messages=[
-#     {"role": "user", "content": "Hello!"}
-#   ],
-#   max_tokens=5
-# )
-
-# print(completion.choices[0].message)
-=======
-print(result)
->>>>>>> 3d90216f68a3839546dd86e876b96779f5382151

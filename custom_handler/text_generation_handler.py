@@ -66,16 +66,11 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             "logprobs": 0,
         }
         
-<<<<<<< HEAD
-        self.model = AutoModelForCausalLM.from_pretrained(model_dir)
-        self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
-=======
         with zipfile.ZipFile(model_dir + "/model.zip", "r") as zip_ref:
             zip_ref.extractall(model_dir + "/model")
         
         self.model = AutoModelForCausalLM.from_pretrained(model_dir + "/model")
         self.tokenizer = AutoTokenizer.from_pretrained(model_dir + "/model")
->>>>>>> 3d90216f68a3839546dd86e876b96779f5382151
 
         self.model.to(self.device)
         self.model.eval()
