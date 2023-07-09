@@ -41,6 +41,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         self.manifest = ctx.manifest
         properties = ctx.system_properties
         model_dir = properties.get("model_dir")
+        model_name = ctx.model_name
 
         self.device = torch.device(
             "cuda:" + str(properties.get("gpu_id"))
@@ -63,7 +64,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             "logprobs": 0,
         }
         
-        with zipfile.ZipFile(model_dir + "/model.zip", "r") as zip_ref:
+        with zipfile.ZipFile(model_dir + "/vicuna-13b.zip", "r") as zip_ref:
             zip_ref.extractall(model_dir + "/model")
         
         self.model = AutoModelForCausalLM.from_pretrained(model_dir + "/model")
