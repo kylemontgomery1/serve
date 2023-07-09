@@ -12,7 +12,6 @@ import transformers
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
-    StoppingCriteria
 )
 
 from ts.torch_handler.base_handler import BaseHandler
@@ -186,21 +185,6 @@ def get_int(input_: str, default=0) -> int:
     except ValueError:
         logging.debug(f'Invalid int {input_} set to default: {default}')
         return default
-
-
-class StopWordsCriteria(StoppingCriteria):
-    def __init__(self, stop_words, tokenizer):
-        self.tokenizer = tokenizer
-        self.stop_words = stop_words
-        self._cache_str = ''
-
-    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-        self._cache_str += self.tokenizer.decode(input_ids[0, -1])
-        for stop_words in self.stop_words:
-            if stop_words in self._cache_str:
-                return True
-        return False
-
 
 def get_float(input_: str, default=0.0) -> float:
     try:
