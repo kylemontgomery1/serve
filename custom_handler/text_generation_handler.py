@@ -69,26 +69,26 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         with zipfile.ZipFile(model_dir + "/vicuna-13b.zip", "r") as zip_ref:
             zip_ref.extractall(model_dir + "/model")
         
-        self.model = AutoModelForCausalLM.from_pretrained(model_dir + "/model")
+        self.model = AutoModelForCausalLM.from_pretrained(model_dir + "/model", device_map = 'auto', torch_dtype=torch.float16)
         
         logger.info("Extracting Tokenizer")
         
-        self.tokenizer = AutoTokenizer.from_pretrained(model_dir + "/model")
+        self.tokenizer = AutoTokenizer.from_pretrained(model_dir + "/model", use_fast=False)
         
-        logger.info("Moving model to device")
+        # logger.info("Moving model to device")
 
-        self.model.to(self.device)
+        # self.model.to(self.device)
         
         logger.info("Setting model to evaluation mode")
         
         self.model.eval()
         
-        logger.info("Setting seed")
+        # logger.info("Setting seed")
         
-        torch.manual_seed(0)
+        # torch.manual_seed(0)
         
-        logger.info("Emptying Cache")
-        torch.cuda.empty_cache()
+        # logger.info("Emptying Cache")
+        # torch.cuda.empty_cache()
         
         logger.info("Transformer model from path %s loaded successfully", model_dir)
 
