@@ -22,6 +22,7 @@ except Exception as e:
     ) from e
 result = response.json()
             
+<<<<<<< HEAD
 print(result)
 
 
@@ -38,3 +39,6 @@ print(result)
 # )
 
 # print(completion.choices[0].message)
+=======
+print(result)
+>>>>>>> 3d90216f68a3839546dd86e876b96779f5382151
