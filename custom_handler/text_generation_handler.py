@@ -73,24 +73,18 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         self.tokenizer = AutoTokenizer.from_pretrained(model_dir + "/model", use_fast=False)
         
         logger.info("Extracting Model")
-        self.model = AutoModelForCausalLM.from_pretrained(model_dir + "/model", torch_dtype=torch.float16, device_map='auto')
+        self.model = AutoModelForCausalLM.from_pretrained(model_dir + "/model", torch_dtype=torch.float16)
         
         logger.info("Emptying Cache")
         torch.cuda.empty_cache()
         
         logger.info("Moving model to device")
-
         self.model.to(self.device)
         
         logger.info("Setting model to evaluation mode")
         self.model.eval()
         
-        # logger.info("Setting seed")
-        
-        # torch.manual_seed(0)
-        
         logger.info("Transformer model from path %s loaded successfully", model_dir)
-
         self.initialized = True
 
     def preprocess(self, requests):
@@ -101,6 +95,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         Returns:
             list : The preprocess function returns a list of Tensor for the size of the word tokens.
         """
+        requests = requests[0]
         requests = {k: v for k, v in requests.items() if v is not None}
         
         self.task_info["seed"] = get_int(requests.get("seed", 0), default=0)
