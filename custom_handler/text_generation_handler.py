@@ -66,14 +66,14 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             "logprobs": 0,
         }
         
-        with zipfile.ZipFile(model_dir + "/vicuna-13b.zip", "r") as zip_ref:
-            zip_ref.extractall(model_dir + "/model")
+        with zipfile.ZipFile(f"{model_dir}/{model_name}.zip", "r") as zip_ref:
+            zip_ref.extractall(f"{model_dir}/{model_name}")
             
         logger.info("Extracting Tokenizer")
-        self.tokenizer = AutoTokenizer.from_pretrained(model_dir + "/model", use_fast=False)
+        self.tokenizer = AutoTokenizer.from_pretrained(f"{model_dir}/{model_name}", use_fast=False)
         
         logger.info("Extracting Model")
-        self.model = AutoModelForCausalLM.from_pretrained(model_dir + "/model", torch_dtype=torch.float16)
+        self.model = AutoModelForCausalLM.from_pretrained(f"{model_dir}/{model_name}", torch_dtype=torch.float16)
         
         logger.info("Emptying Cache")
         torch.cuda.empty_cache()
