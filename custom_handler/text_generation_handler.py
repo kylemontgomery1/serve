@@ -73,7 +73,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         self.tokenizer = AutoTokenizer.from_pretrained(model_dir + "/model", use_fast=False)
         
         logger.info("Extracting Model")
-        self.model = AutoModelForCausalLM.from_pretrained(model_dir + "/model", torch_dtype=torch.float16, device_map='auto')
+        self.model = AutoModelForCausalLM.from_pretrained(model_dir + "/model", torch_dtype=torch.float16)
         
         logger.info("Emptying Cache")
         torch.cuda.empty_cache()
