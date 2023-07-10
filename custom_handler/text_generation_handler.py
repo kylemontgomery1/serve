@@ -95,11 +95,9 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         Returns:
             list : The preprocess function returns a list of Tensor for the size of the word tokens.
         """
-        logger.info(requests)
-        requests = requests[0]
+        requests = requests[0]["body"]
         logger.info(requests)
         requests = {k: v for k, v in requests.items() if v is not None}
-        logger.info(requests)
         
         self.task_info["seed"] = get_int(requests.get("seed", 0), default=0)
         self.task_info["prompt_seqs"] = [str(requests['prompt'])]
