@@ -49,6 +49,8 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             else "cpu"
         )
         
+        logger.info("Device: %s", self.device)
+        
         self.task_info = {
             "seed": 0,
             "prompt_seqs": None,
