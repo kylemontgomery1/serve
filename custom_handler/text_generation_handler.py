@@ -190,7 +190,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         if self.task_info["logprobs"] > 0:
             result['logprobs'] = self.logprobs
         
-        return result
+        return [result]
     
 def get_int(input_: str, default=0) -> int:
     try:
