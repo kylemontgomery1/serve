@@ -113,7 +113,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         self.task_info["stop"] = requests.get("stop", [])
         self.task_info["logprobs"] = get_int(requests.get("logprobs", 0), default=0)
         
-        return self.tokenizer(self.task_info["prompt_seqs"], return_tensors="pt", device = self.device)
+        return self.tokenizer(self.task_info["prompt_seqs"], return_tensors="pt").to(self.device)
 
 
     def inference(self, inputs):
@@ -136,7 +136,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             time = timeit.default_timer()
             if self.task_info["temperature"] == 0:
                 outputs = self.model.generate(
-                    **inputs, do_sample=True, top_p=self.task_info['top_p'],
+                    inputs["input_ids"], do_sample=True, top_p=self.task_info['top_p'],
                     temperature=1.0, top_k=1,
                     max_new_tokens=self.task_info["output_len"],
                     return_dict_in_generate=True,
@@ -145,7 +145,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                 )
             else:
                 outputs = self.model.generate(
-                    **inputs, do_sample=True, top_p=self.task_info['top_p'],
+                    inputs["input_ids"], do_sample=True, top_p=self.task_info['top_p'],
                     temperature=self.task_info["temperature"],
                     max_new_tokens=self.task_info["output_len"],
                     return_dict_in_generate=True,
