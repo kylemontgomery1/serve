@@ -4,19 +4,12 @@
 ```
 bash /scratch/serve/exe/run.sh
 ```
-This will register all the models in `model_store`, but will not load any workers. It requires all the GPU's in the node to be empty, since it will run them in exclusive process mode.
+This will load the api, but will not register any models or load any workers. It requires all the GPU's in the node to be empty, since it will run them in exclusive process mode.
 
-### To add/increase workers for a model
+### To register a model with an initial number of workers
 ```
-curl -v -X PUT "http://localhost:8081/models/{model_name}?min_worker={num_workers}"
+curl -X POST "http://localhost:8081/models?url={model_name}.mar&initial_workers={num_workers}"
 ```
-
-### To remove/decrease workers for a model
-
-```
-curl -v -X PUT "http://localhost:8081/models/{model_name}?max_worker={num_workers}"
-```
-Be careful not to assign more than 8 workers in total between all models, otherwise models may start to OOM. So always remove workers before adding workers.
 
 ### To check the status of a model
 ```
@@ -63,3 +56,17 @@ singularity run --nv /scratch/serve.sif /bin/bash
 export TEMP=/scratch/tmp
 torchserve --stop
 ```
+
+## Beware the following sections. Worker reallocation is a bit tricky, as the workers often crash or try to run on gpus alread in use. You're much better off if you can assign workers when you register the model.
+
+### To add/increase workers for a model
+```
+curl -v -X PUT "http://localhost:8081/models/{model_name}?min_worker={num_workers}"
+```
+
+### To remove/decrease workers for a model
+
+```
+curl -v -X PUT "http://localhost:8081/models/{model_name}?min_worker={num_workers}"
+```
+Be careful not to assign more than 8 workers in total between all models, otherwise models may start to OOM. So always remove workers before adding workers.
