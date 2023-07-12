@@ -143,7 +143,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                     return_dict_in_generate=True,
                     output_scores=output_scores,  # return logit score
                     output_hidden_states=False,  # return embeddings
-                    bad_words_ids = self.tokenizer(self.task_info["banned_tokens"], return_tensors="pt", add_prefix_space=True, add_special_tokens=False).input_ids if self.task_info["banned_tokens"] else None,
+                    bad_words_ids = self.tokenizer(self.task_info["banned_tokens"], add_prefix_space=True, add_special_tokens=False).input_ids if self.task_info["banned_tokens"] else None,
                 )
             else:
                 outputs = self.model.generate(
@@ -153,7 +153,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                     return_dict_in_generate=True,
                     output_scores=output_scores,  # return logit score
                     output_hidden_states=False,  # return embeddings
-                    bad_words_ids = self.tokenizer(self.task_info["banned_tokens"], return_tensors="pt", add_prefix_space=True, add_special_tokens=False).input_ids if self.task_info["banned_tokens"] else None,
+                    bad_words_ids = self.tokenizer(self.task_info["banned_tokens"], add_prefix_space=True, add_special_tokens=False).input_ids if self.task_info["banned_tokens"] else None,
                 )
             if output_scores:
                 self.logprobs = convert_hf_score_to_logprobs(outputs.scores, self.task_info["logprobs"], self.tokenizer)
