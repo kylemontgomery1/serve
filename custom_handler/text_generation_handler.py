@@ -74,7 +74,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             zip_ref.extractall(f"{model_dir}/{model_name}")
             
         logger.info("Extracting Tokenizer")
-        self.tokenizer = AutoTokenizer.from_pretrained(f"{model_dir}/{model_name}")
+        self.tokenizer = AutoTokenizer.from_pretrained(f"{model_dir}/{model_name}", return_token_type_ids=False)
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = 'left'
@@ -175,7 +175,6 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                             return_dict_in_generate=True,
                             output_scores=output_scores,  # return logit score
                             output_hidden_states=True,  # return embeddings
-                            stream_tokens=self.task_info.get("stream_tokens"),
                         )
                     else:
                         class StopWordsCriteria(StoppingCriteria):
@@ -202,7 +201,6 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                             return_dict_in_generate=True,
                             output_scores=output_scores,  # return logit score
                             output_hidden_states=True,  # return embeddings
-                            stream_tokens=self.task_info.get("stream_tokens"),
                             stopping_criteria=StoppingCriteriaList([StopWordsCriteria(self.task_info["stop"], self.tokenizer)]) if self.task_info.get("stop") else None,
                         )
                     if output_scores:
