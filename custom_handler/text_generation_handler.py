@@ -8,6 +8,7 @@ import random
 import timeit
 import zipfile
 import math
+from functools import wraps
 
 import torch
 import transformers
@@ -79,6 +80,12 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = 'left'
         self.tokenizer.truncation_side = 'left'
+        tok_call_one = self.tokenizer._call_one
+        @wraps(tok_call_one)
+        def _call_one_wrapped(*x, **y):
+            y['return_token_type_ids'] = False
+            return tok_call_one(*x, **y)
+        self.tokenizer._call_one = _call_one_wrapped
         
         logger.info("Extracting Model")
         self.model = AutoModelForCausalLM.from_pretrained(f"{model_dir}/{model_name}", torch_dtype=torch.float16)
