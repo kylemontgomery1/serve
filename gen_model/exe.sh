@@ -1,2 +1,2 @@
-cd /scratch/model_store
+cd /scratch/serve/model_store
 torch-model-archiver --model-name vicuna-13b-v0 --version 1.0 --handler /scratch/serve/custom_handler/text_generation_handler.py --extra-files vicuna-13b-v0.zip -r requirements.txt -f
