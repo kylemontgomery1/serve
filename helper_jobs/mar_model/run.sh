@@ -1,0 +1,1 @@
+bsub -m chenguang02 /bin/bash /scratch/serve/helper_jobs/mar_model/launch_docker.sh
