@@ -86,7 +86,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         self.tokenizer._call_one = _call_one_wrapped
         
         logger.info("Extracting Model")
-        self.model = AutoModelForCausalLM.from_pretrained(model_path, use_cache=False, torch_dtype=torch.bfloat16, device_map='auto')
+        self.model = AutoModelForCausalLM.from_pretrained(model_path, use_cache=False, torch_dtype=torch.float16, device_map='auto')
         self.model.eval()
         
         logger.info("Transformer model from path %s loaded successfully", model_dir)
@@ -174,6 +174,8 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                     
                     #Format appropriately
                     contexts = ["[INST] <<SYS>>\n\n<</SYS>>\n\n" + c.rstrip() + " [/INST]" for c in contexts]
+                    logger.debug(f"contexts: {contexts}")
+                    
                     inputs = self.tokenizer(contexts, padding=True, truncation=True, return_tensors="pt").to(self.device)
                     input_length = inputs.input_ids.shape[1]
 
