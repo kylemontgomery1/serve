@@ -87,6 +87,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         
         logger.info("Extracting Model")
         self.model = AutoModelForCausalLM.from_pretrained(model_path, use_cache=False, torch_dtype=torch.bfloat16, device_map='auto')
+        self.model.eval()
         
         logger.info("Transformer model from path %s loaded successfully", model_dir)
         self.initialized = True
@@ -306,6 +307,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             "choices": inference_results['choices'],
             "raw_compute_time": self.time_elapsed,
         }
+        torch.cuda.empty_cache()
         
         return [result]
     
