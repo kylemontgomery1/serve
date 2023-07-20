@@ -46,7 +46,6 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         properties = ctx.system_properties
         model_dir = properties.get("model_dir")
         model_name = ctx.model_name
-        
         self.max_batch_size = 1
         self.deny_list = []
 

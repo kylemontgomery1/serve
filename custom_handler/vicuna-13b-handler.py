@@ -49,7 +49,6 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         self.max_batch_size = 1
         self.deny_list = []
         model_path = ctx.model_yaml_config["handler"]["model_path"]
-        torch.manual_seed(0)
         
         self.device = torch.device(
             "cuda:" + str(properties.get("gpu_id"))
@@ -86,8 +85,9 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         self.tokenizer._call_one = _call_one_wrapped
         
         logger.info("Extracting Model")
-        self.model = AutoModelForCausalLM.from_pretrained(model_path, use_cache=False, torch_dtype=torch.float16)
+        self.model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=torch.float16)
         self.model.to(self.device)
+        torch.manual_seed(0)
         
         logger.info("Transformer model from path %s loaded successfully", model_dir)
         self.initialized = True
@@ -100,7 +100,6 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         Returns:
             list : The preprocess function returns a list of Tensor for the size of the word tokens.
         """
-        torch.cuda.empty_cache()
         
         requests = requests[0]["body"]
         requests = {k: v for k, v in requests.items() if v is not None}
@@ -304,7 +303,6 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             "choices": inference_results['choices'],
             "raw_compute_time": self.time_elapsed,
         }
-        torch.cuda.empty_cache()
         
         return [result]
     
