@@ -174,6 +174,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                     
                     #Format appropriately
                     contexts = ["[INST] <<SYS>>\n\n<</SYS>>\n\n" + c.rstrip() + " [/INST]" for c in contexts]
+                    logger.debug(contexts)
                     inputs = self.tokenizer(contexts, padding=True, truncation=True, return_tensors="pt").to(self.device)
                     input_length = inputs.input_ids.shape[1]
 
