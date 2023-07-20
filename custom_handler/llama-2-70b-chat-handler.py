@@ -20,15 +20,13 @@ from transformers import (
     StoppingCriteria
 )
 
-# from ts.torch_handler.base_handler import BaseHandler
-from ts.handler_utils.distributed.pt_pippy import get_pipeline_driver
-from ts.torch_handler.distributed.base_pippy_handler import BasePippyHandler
+from ts.torch_handler.base_handler import BaseHandler
 
 logger = logging.getLogger(__name__)
 logger.info("Transformers version %s", transformers.__version__)
 
 
-class TransformersSeqClassifierHandler(BasePippyHandler, ABC):
+class TransformersSeqClassifierHandler(BaseHandler, ABC):
     """
     Transformers handler class for sequence, token classification and question answering.
     """
@@ -45,21 +43,19 @@ class TransformersSeqClassifierHandler(BasePippyHandler, ABC):
             ctx (context): It is a JSON Object containing information
             pertaining to the model artefacts parameters.
         """
-        super().initialize(ctx)
         self.manifest = ctx.manifest
         properties = ctx.system_properties
         model_dir = properties.get("model_dir")
-        self.device = self.local_rank
         self.max_batch_size = 1
         self.deny_list = []
         model_path = ctx.model_yaml_config["handler"]["model_path"]
         torch.manual_seed(0)
         
-        # self.device = torch.device(
-        #     "cuda:" + str(properties.get("gpu_id"))
-        #     if torch.cuda.is_available() and properties.get("gpu_id") is not None
-        #     else "cpu"
-        # )
+        self.device = torch.device(
+            "cuda:" + str(properties.get("gpu_id"))
+            if torch.cuda.is_available() and properties.get("gpu_id") is not None
+            else "cpu"
+        )
         
         self.task_info = {
             "seed": 0,
@@ -75,17 +71,6 @@ class TransformersSeqClassifierHandler(BasePippyHandler, ABC):
             "stop": [],
             "logprobs": 0,
         }
-        
-        logger.info("Initializing model")
-        skip_init_start = time.perf_counter()
-        with torch.device("meta"):
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_path, use_cache=False, torch_dtype=torch.float16
-            )
-        skip_init_end = time.perf_counter()
-        logger.info(
-            f" Init model time on meta device took {skip_init_end - skip_init_start} seconds"
-        )
             
         logger.info("Extracting Tokenizer")
         self.tokenizer = AutoTokenizer.from_pretrained(model_path, return_token_type_ids=False)
@@ -100,15 +85,8 @@ class TransformersSeqClassifierHandler(BasePippyHandler, ABC):
             return tok_call_one(*x, **y)
         self.tokenizer._call_one = _call_one_wrapped
         
-        
-        logger.info("Instantiating model Pipeline")
-        pippy_compile_time_start = time.perf_counter()
-        self.model = get_pipeline_driver(self.model, self.world_size, ctx)
-        pippy_compile_time_end = time.perf_counter()
-
-        logger.info(
-            f" pippy compile time took {pippy_compile_time_end- pippy_compile_time_start} seconds on rank {self.local_rank}"
-        )
+        logger.info("Extracting Model")
+        self.model = AutoModelForCausalLM.from_pretrained(model_path, use_cache=False, torch_dtype=torch.float16, device_map='auto')
         
         logger.info("Transformer model from path %s loaded successfully", model_dir)
         self.initialized = True
