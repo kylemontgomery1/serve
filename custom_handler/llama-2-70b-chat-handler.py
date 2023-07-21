@@ -55,6 +55,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         logger.info(ctx.system_properties)
         logger.info(ctx.system_properties.keys())
         logger.info(properties.get("gpu_id"))
+        logger.info(torch.cuda.device_count())
         
         
         self.device = torch.device(
