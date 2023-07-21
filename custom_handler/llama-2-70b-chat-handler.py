@@ -126,7 +126,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         with init_empty_weights():
             model = AutoModelForCausalLM.from_config(config)
         model.tie_weights()
-        device_map = infer_auto_device_map(model, max_memory=max_memory, dtype=torch.float16)
+        device_map = infer_auto_device_map(model, max_memory=max_memory, dtype=torch.float16, no_split_module_classes=["LlamaDecoderLayer"])
         logger.info(device_map)
         self.model = load_checkpoint_and_dispatch(model, model_path, device_map=device_map, dtype=torch.float16)
         torch.manual_seed(0)
