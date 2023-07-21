@@ -25,6 +25,10 @@ from accelerate import (
     init_empty_weights,
     load_checkpoint_and_dispatch,
 )
+from accelerate.utils import (
+    load_and_quantize_model,
+    BnbQuantizationConfig,
+)
 
 from ts.torch_handler.base_handler import BaseHandler
 
@@ -55,6 +59,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         self.max_batch_size = 1
         self.deny_list = []
         model_path = ctx.model_yaml_config["handler"]["model_path"]
+        quantize = ctx.model_yaml_config["handler"]["quantize"]
         self.task_info = {
             "seed": 0,
             "prompt_seqs": None,
@@ -69,8 +74,6 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             "stop": [],
             "logprobs": 0,
         }
-        
-        logger.info("Original GPU ID: %s", properties.get("gpu_id"))
         
         if properties.get("gpu_id") % 2 == 0: #0, 2, 4, 6
             self.device = torch.device("cuda:0")
@@ -122,15 +125,113 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         
         
         logger.info("Extracting Model")
-        config = AutoConfig.from_pretrained(model_path)
-        with init_empty_weights():
-            model = AutoModelForCausalLM.from_config(config)
-        model.tie_weights()
-        device_map = infer_auto_device_map(model, max_memory=max_memory, dtype=torch.float16, no_split_module_classes=["LlamaDecoderLayer"])
-        logger.info(device_map)
-        self.model = load_checkpoint_and_dispatch(model, model_path, device_map=device_map, dtype=torch.float16)
-        torch.manual_seed(0)
+        if quantize == "int8":
+            max_memory = {
+                0 : "0GiB",
+                1 : "0GiB",
+                2 : "0GiB",
+                3 : "0GiB",
+                4 : "0GiB",
+                5 : "0GiB",
+                6 : "0GiB",
+                7 : "0GiB",
+            }
+            assigned_gpu = properties.get("gpu_id")
+            if assigned_gpu in [0, 4]:
+                max_memory[0] = "48GiB"
+                max_memory[1] = "48GiB"
+                self.device = torch.device("cuda:0")
+            elif assigned_gpu in [1, 5]:
+                max_memory[2] = "48GiB"
+                max_memory[3] = "48GiB"
+                self.device = torch.device("cuda:2")
+            elif assigned_gpu in [2, 6]:
+                max_memory[4] = "48GiB"
+                max_memory[5] = "48GiB"
+                self.device = torch.device("cuda:4")
+            else: 
+                max_memory[6] = "48GiB"
+                max_memory[7] = "48GiB"
+                self.device = torch.device("cuda:6")
+                
+            quantization_config = BnbQuantizationConfig(load_in_8bit=True,
+                                                        llm_int8_threshold = 6.0,
+                                                       )
+            config = AutoConfig.from_pretrained(model_path)
+            with init_empty_weights():
+                model = AutoModelForCausalLM.from_config(config)
+            self.model = load_and_quantize_model(model=model,
+                                                weights_location=model_path,
+                                                bnb_config=quantization_config,
+                                                device_map='auto',
+                                                no_split_module_classes=["LlamaDecoderLayer"],
+                                                max_memory=max_memory,
+                                                )
+        elif quantize == 'int4':
+            max_memory = {
+                0 : "0GiB",
+                1 : "0GiB",
+                2 : "0GiB",
+                3 : "0GiB",
+                4 : "0GiB",
+                5 : "0GiB",
+                6 : "0GiB",
+                7 : "0GiB",
+            }
+            max_memory[properties.get("gpu_id")] = "48GiB"
+            self.device = torch.device("cuda:" + str(properties.get("gpu_id")))
+            quantization_config = BnbQuantizationConfig(load_in_4bit=True,
+                                                        bnb_4bit_use_double_quant = False,
+                                                        bnb_4bit_quant_type = "fp4",
+                                                        bnb_4bit_compute_dtype = torch.float16,
+                                                       )
+            config = AutoConfig.from_pretrained(model_path)
+            with init_empty_weights():
+                model = AutoModelForCausalLM.from_config(config)
+            self.model = load_and_quantize_model(model=model,
+                                                weights_location=model_path,
+                                                bnb_config=quantization_config,
+                                                device_map='auto',
+                                                no_split_module_classes=["LlamaDecoderLayer"],
+                                                max_memory=max_memory,
+                                                )
+        else: #load in half precision
+            if properties.get("gpu_id") % 2 == 0: #0, 2, 4, 6
+                self.device = torch.device("cuda:0")
+                max_memory = {
+                    0 : "48GiB",
+                    1 : "48GiB",
+                    2 : "48GiB",
+                    3 : "48GiB",
+                    4 : "0GiB",
+                    5 : "0GiB",
+                    6 : "0GiB",
+                    7 : "0GiB",
+                }
+            else: #1, 3, 5, 7
+                self.device = torch.device("cuda:4")
+                max_memory = {
+                    0 : "0GiB",
+                    1 : "0GiB",
+                    2 : "0GiB",
+                    3 : "0GiB",
+                    4 : "48GiB",
+                    5 : "48GiB",
+                    6 : "48GiB",
+                    7 : "48GiB",
+                }
+            config = AutoConfig.from_pretrained(model_path)
+            with init_empty_weights():
+                model = AutoModelForCausalLM.from_config(config)
+            self.model = load_checkpoint_and_dispatch(model, 
+                                                      model_path, 
+                                                      device_map='auto', 
+                                                      dtype=torch.float16, 
+                                                      max_memory=max_memory, 
+                                                      no_split_module_classes=["LlamaDecoderLayer"]
+                                                )
         
+        torch.manual_seed(0)
         logger.info("Transformer model from path %s loaded successfully", model_dir)
         self.initialized = True
 
