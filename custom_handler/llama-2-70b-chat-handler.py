@@ -50,6 +50,12 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         self.deny_list = []
         model_path = ctx.model_yaml_config["handler"]["model_path"]
         logger.info(ctx)
+        logger.info(ctx.manifest)
+        logger.info(ctx.gpu)
+        logger.info(ctx.system_properties)
+        logger.info(ctx.system_properties.keys())
+        logger.info(properties.get("gpu_id"))
+        
         
         self.device = torch.device(
             "cuda:" + str(properties.get("gpu_id"))
