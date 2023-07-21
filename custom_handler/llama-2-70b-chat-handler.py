@@ -167,7 +167,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                                                 no_split_module_classes=["LlamaDecoderLayer"],
                                                 max_memory=max_memory,
                                                 )
-        elif quantize == 'int4':
+        elif quantize in ['fp4', 'nf4']:
             max_memory = {
                 0 : "0GiB",
                 1 : "0GiB",
@@ -182,7 +182,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             self.device = torch.device("cuda:" + str(properties.get("gpu_id")))
             quantization_config = BnbQuantizationConfig(load_in_4bit=True,
                                                         bnb_4bit_use_double_quant = False,
-                                                        bnb_4bit_quant_type = "fp4",
+                                                        bnb_4bit_quant_type = quantize,
                                                         bnb_4bit_compute_dtype = torch.float16,
                                                        )
             config = AutoConfig.from_pretrained(model_path)
