@@ -70,6 +70,8 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             "logprobs": 0,
         }
         
+        logger.info("Original GPU ID: %s", properties.get("gpu_id"))
+        
         if properties.get("gpu_id") % 2 == 0: #0, 2, 4, 6
             self.device = torch.device("cuda:0")
             max_memory = {
