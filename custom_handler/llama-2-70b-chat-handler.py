@@ -16,8 +16,14 @@ import transformers
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    AutoConfig,
     StoppingCriteriaList,
-    StoppingCriteria
+    StoppingCriteria,
+)
+from accelerate import (
+    infer_auto_device_map,
+    init_empty_weights,
+    load_checkpoint_and_dispatch,
 )
 
 from ts.torch_handler.base_handler import BaseHandler
@@ -49,20 +55,6 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         self.max_batch_size = 1
         self.deny_list = []
         model_path = ctx.model_yaml_config["handler"]["model_path"]
-        logger.info(ctx)
-        logger.info(ctx.manifest)
-        logger.info(ctx.system_properties)
-        logger.info(ctx.system_properties.keys())
-        logger.info(properties.get("gpu_id"))
-        logger.info(torch.cuda.device_count())
-        
-        
-        self.device = torch.device(
-            "cuda:" + str(properties.get("gpu_id"))
-            if torch.cuda.is_available() and properties.get("gpu_id") is not None
-            else "cpu"
-        )
-        
         self.task_info = {
             "seed": 0,
             "prompt_seqs": None,
@@ -77,6 +69,33 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             "stop": [],
             "logprobs": 0,
         }
+        
+        if properties.get("gpu_id") % 2 == 0: #0, 2, 4, 6
+            self.device = torch.device("cuda:0")
+            max_memory = {
+                0 : "40GiB",
+                1 : "40GiB",
+                2 : "40GiB",
+                3 : "40GiB",
+            }
+        else: #1, 3, 5, 7
+            self.device = torch.device("cuda:4")
+            max_memory = {
+                4 : "40GiB",
+                5 : "40GiB",
+                6 : "40GiB",
+                7 : "40GiB",
+            }
+            
+        
+        
+        
+        # self.device = torch.device(
+        #     "cuda:" + str(properties.get("gpu_id"))
+        #     if torch.cuda.is_available() and properties.get("gpu_id") is not None
+        #     else "cpu"
+        # )
+        
             
         logger.info("Extracting Tokenizer")
         self.tokenizer = AutoTokenizer.from_pretrained(model_path, return_token_type_ids=False)
@@ -91,8 +110,15 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             return tok_call_one(*x, **y)
         self.tokenizer._call_one = _call_one_wrapped
         
+        
         logger.info("Extracting Model")
-        self.model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=torch.float16, device_map='auto')
+        config = AutoConfig.from_pretrained(model_path)
+        with init_empty_weights():
+            model = AutoModelForCausalLM.from_config(config)
+        model.tie_weights()
+        device_map = infer_auto_device_map(model, max_memory=max_memory, dtype=torch.float16)
+        logger.info(device_map)
+        self.model = load_checkpoint_and_dispatch(model, model_path, device_map=device_map, dtype=torch.float16)
         torch.manual_seed(0)
         
         logger.info("Transformer model from path %s loaded successfully", model_dir)
