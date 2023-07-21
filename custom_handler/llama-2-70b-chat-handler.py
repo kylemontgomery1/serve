@@ -79,10 +79,18 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                 1 : "40GiB",
                 2 : "40GiB",
                 3 : "40GiB",
+                4 : "0GiB",
+                5 : "0GiB",
+                6 : "0GiB",
+                7 : "0GiB",
             }
         else: #1, 3, 5, 7
             self.device = torch.device("cuda:4")
             max_memory = {
+                0 : "0GiB",
+                1 : "0GiB",
+                2 : "0GiB",
+                3 : "0GiB",
                 4 : "40GiB",
                 5 : "40GiB",
                 6 : "40GiB",
