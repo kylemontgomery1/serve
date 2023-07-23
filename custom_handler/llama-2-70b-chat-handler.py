@@ -137,6 +137,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                 7 : "0GiB",
             }
             assigned_gpu = properties.get("gpu_id")
+            logger.info(assigned_gpu)
             if assigned_gpu in [0, 4]:
                 max_memory[0] = "48GiB"
                 max_memory[1] = "48GiB"
