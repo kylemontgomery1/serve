@@ -162,7 +162,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                 model = AutoModelForCausalLM.from_config(config)
             self.model = load_and_quantize_model(model=model,
                                                 weights_location=model_path,
-                                                quantization_config=quantization_config,
+                                                bnb_quantization_config=quantization_config,
                                                 device_map='auto',
                                                 no_split_module_classes=["LlamaDecoderLayer"],
                                                 max_memory=max_memory,
@@ -190,7 +190,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                 model = AutoModelForCausalLM.from_config(config)
             self.model = load_and_quantize_model(model=model,
                                                 weights_location=model_path,
-                                                quantization_config=quantization_config,
+                                                bnb_quantization_config=quantization_config,
                                                 device_map='auto',
                                                 no_split_module_classes=["LlamaDecoderLayer"],
                                                 max_memory=max_memory,
