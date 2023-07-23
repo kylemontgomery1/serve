@@ -162,7 +162,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                 model = AutoModelForCausalLM.from_config(config)
             self.model = load_and_quantize_model(model=model,
                                                 weights_location=model_path,
-                                                bnb_config=quantization_config,
+                                                quantization_config=quantization_config,
                                                 device_map='auto',
                                                 no_split_module_classes=["LlamaDecoderLayer"],
                                                 max_memory=max_memory,
@@ -190,7 +190,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                 model = AutoModelForCausalLM.from_config(config)
             self.model = load_and_quantize_model(model=model,
                                                 weights_location=model_path,
-                                                bnb_config=quantization_config,
+                                                quantization_config=quantization_config,
                                                 device_map='auto',
                                                 no_split_module_classes=["LlamaDecoderLayer"],
                                                 max_memory=max_memory,
@@ -229,7 +229,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                                                       dtype=torch.float16, 
                                                       max_memory=max_memory, 
                                                       no_split_module_classes=["LlamaDecoderLayer"]
-                                                )
+                                                    )
         
         torch.manual_seed(0)
         logger.info("Transformer model from path %s loaded successfully", model_dir)
