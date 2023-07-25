@@ -60,6 +60,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         self.deny_list = []
         model_path = ctx.model_yaml_config["handler"]["model_path"]
         quantize = ctx.model_yaml_config["handler"]["quantize"]
+        num_gpu_per_model = ctx.model_yaml_config["handler"]["num_gpu_per_model"]
         self.task_info = {
             "seed": 0,
             "prompt_seqs": None,
@@ -74,41 +75,6 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             "stop": [],
             "logprobs": 0,
         }
-        
-        if properties.get("gpu_id") % 2 == 0: #0, 2, 4, 6
-            self.device = torch.device("cuda:0")
-            max_memory = {
-                0 : "40GiB",
-                1 : "40GiB",
-                2 : "40GiB",
-                3 : "40GiB",
-                4 : "0GiB",
-                5 : "0GiB",
-                6 : "0GiB",
-                7 : "0GiB",
-            }
-        else: #1, 3, 5, 7
-            self.device = torch.device("cuda:4")
-            max_memory = {
-                0 : "0GiB",
-                1 : "0GiB",
-                2 : "0GiB",
-                3 : "0GiB",
-                4 : "40GiB",
-                5 : "40GiB",
-                6 : "40GiB",
-                7 : "40GiB",
-            }
-            
-        
-        
-        
-        # self.device = torch.device(
-        #     "cuda:" + str(properties.get("gpu_id"))
-        #     if torch.cuda.is_available() and properties.get("gpu_id") is not None
-        #     else "cpu"
-        # )
-        
             
         logger.info("Extracting Tokenizer")
         self.tokenizer = AutoTokenizer.from_pretrained(model_path, return_token_type_ids=False)
@@ -125,7 +91,22 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         
         
         logger.info("Extracting Model")
-        if quantize == "int8":
+
+        # What follows is some ugly code to map devices appropriately.
+        if num_gpu_per_model == 1: # fp4 or nf4
+            max_memory = {
+                0 : "0GiB",
+                1 : "0GiB",
+                2 : "0GiB",
+                3 : "0GiB",
+                4 : "0GiB",
+                5 : "0GiB",
+                6 : "0GiB",
+                7 : "0GiB",
+            }
+            max_memory[properties.get("gpu_id")] = "48GiB"
+            self.device = torch.device("cuda:" + str(properties.get("gpu_id")))
+        elif num_gpu_per_model == 2: # int8
             max_memory = {
                 0 : "0GiB",
                 1 : "0GiB",
@@ -154,49 +135,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                 max_memory[6] = "48GiB"
                 max_memory[7] = "48GiB"
                 self.device = torch.device("cuda:6")
-                
-            quantization_config = BnbQuantizationConfig(load_in_8bit=True,
-                                                        llm_int8_threshold = 6.0,
-                                                       )
-            config = AutoConfig.from_pretrained(model_path)
-            with init_empty_weights():
-                model = AutoModelForCausalLM.from_config(config)
-            self.model = load_and_quantize_model(model=model,
-                                                weights_location=model_path,
-                                                bnb_quantization_config=quantization_config,
-                                                device_map='auto',
-                                                no_split_module_classes=["LlamaDecoderLayer"],
-                                                max_memory=max_memory,
-                                                )
-        elif quantize in ['fp4', 'nf4']:
-            max_memory = {
-                0 : "0GiB",
-                1 : "0GiB",
-                2 : "0GiB",
-                3 : "0GiB",
-                4 : "0GiB",
-                5 : "0GiB",
-                6 : "0GiB",
-                7 : "0GiB",
-            }
-            max_memory[properties.get("gpu_id")] = "48GiB"
-            self.device = torch.device("cuda:" + str(properties.get("gpu_id")))
-            quantization_config = BnbQuantizationConfig(load_in_4bit=True,
-                                                        bnb_4bit_use_double_quant = False,
-                                                        bnb_4bit_quant_type = quantize,
-                                                        bnb_4bit_compute_dtype = torch.float16,
-                                                       )
-            config = AutoConfig.from_pretrained(model_path)
-            with init_empty_weights():
-                model = AutoModelForCausalLM.from_config(config)
-            self.model = load_and_quantize_model(model=model,
-                                                weights_location=model_path,
-                                                bnb_quantization_config=quantization_config,
-                                                device_map='auto',
-                                                no_split_module_classes=["LlamaDecoderLayer"],
-                                                max_memory=max_memory,
-                                                )
-        else: #load in half precision
+        else: # 4 gpu per model (half or mixed precision)
             if properties.get("gpu_id") % 2 == 0: #0, 2, 4, 6
                 self.device = torch.device("cuda:0")
                 max_memory = {
@@ -221,6 +160,38 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                     6 : "48GiB",
                     7 : "48GiB",
                 }
+            
+        if quantize == "int8":
+            quantization_config = BnbQuantizationConfig(load_in_8bit=True,
+                                                        llm_int8_threshold = 6.0,
+                                                       )    
+            config = AutoConfig.from_pretrained(model_path)
+            with init_empty_weights():
+                model = AutoModelForCausalLM.from_config(config)
+            self.model = load_and_quantize_model(model=model,
+                                                weights_location=model_path,
+                                                bnb_quantization_config=quantization_config,
+                                                device_map='auto',
+                                                no_split_module_classes=["LlamaDecoderLayer"],
+                                                max_memory=max_memory,
+                                                )
+        elif quantize in ['fp4', 'nf4']:
+            quantization_config = BnbQuantizationConfig(load_in_4bit=True,
+                                                        bnb_4bit_use_double_quant = False,
+                                                        bnb_4bit_quant_type = quantize,
+                                                        bnb_4bit_compute_dtype = torch.float16,
+                                                       )
+            config = AutoConfig.from_pretrained(model_path)
+            with init_empty_weights():
+                model = AutoModelForCausalLM.from_config(config)
+            self.model = load_and_quantize_model(model=model,
+                                                weights_location=model_path,
+                                                bnb_quantization_config=quantization_config,
+                                                device_map='auto',
+                                                no_split_module_classes=["LlamaDecoderLayer"],
+                                                max_memory=max_memory,
+                                                )
+        else:
             config = AutoConfig.from_pretrained(model_path)
             with init_empty_weights():
                 model = AutoModelForCausalLM.from_config(config)
