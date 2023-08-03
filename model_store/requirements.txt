@@ -1,0 +1,6 @@
+transformers
+accelerate
+sentencepiece
+protobuf==3.20.*
+bitsandbytes
+scipy

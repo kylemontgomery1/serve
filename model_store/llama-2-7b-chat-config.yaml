@@ -1,0 +1,6 @@
+responseTimeout: 5000
+torchrun:
+    nproc-per-node: 1 # specifies the number of processes torchrun starts to serve your model, set to world_size or number of
+                       # gpus you wish to split your model
+handler:
+    model_path: "/scratch/weights/hub/models--meta-llama--Llama-2-7b-chat-hf/snapshots/01622a9d125d924bd828ab6c72c995d5eda92b8e"

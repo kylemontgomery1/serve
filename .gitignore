@@ -23,10 +23,8 @@ venv/
 
 # Postman files
 test/artifacts/
-test/logs/
+*logs/
 test/pytest/logs/
-test/model_store/
-*model_store/
 test/ts_console.log
 test/config.properties
 
