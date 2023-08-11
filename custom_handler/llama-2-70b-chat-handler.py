@@ -237,7 +237,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         self.task_info["repetition_penalty"] = get_float(requests.get("repetition_penalty", 1.0), default=1.0)
         self.task_info["stop"] = requests.get("stop", [])
         self.task_info["logprobs"] = get_int(requests.get("logprobs", 0), default=0)
-        # self.task_info["truncation_length"] = get_int(requests.get("truncation_length", 4096), default=4096)
+        self.task_info["truncation_length"] = get_int(requests.get("truncation_length", 4096), default=4096)
         
         return None
     
@@ -291,7 +291,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                     contexts = ["[INST] <<SYS>>\n\n<</SYS>>\n\n" + c for c in contexts]
                     # logger.info(f"contexts: {contexts}")
                     
-                    # inputs = self.tokenizer(contexts, padding=True, truncation=True, return_tensors="pt", max_length=self.task_info["truncation_length"] - self.task_info["output_len"]).to(self.device)
+                    inputs = self.tokenizer(contexts, padding=True, truncation=True, return_tensors="pt", max_length=self.task_info["truncation_length"] - self.task_info["output_len"]).to(self.device)
                     inputs = self.tokenizer(contexts, padding=True, truncation=True, return_tensors="pt").to(self.device)
                     input_length = inputs.input_ids.shape[1]
 
