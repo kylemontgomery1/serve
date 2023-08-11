@@ -292,7 +292,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                     # logger.info(f"contexts: {contexts}")
                     
                     inputs = self.tokenizer(contexts, padding=True, truncation=True, return_tensors="pt", max_length=self.task_info["truncation_length"] - self.task_info["output_len"]).to(self.device)
-                    inputs = self.tokenizer(contexts, padding=True, truncation=True, return_tensors="pt").to(self.device)
+                    # inputs = self.tokenizer(contexts, padding=True, truncation=True, return_tensors="pt").to(self.device)
                     input_length = inputs.input_ids.shape[1]
 
                     if self.task_info["temperature"] == 0:
