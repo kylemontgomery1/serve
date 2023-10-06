@@ -1,4 +1,4 @@
-# Chenguang02 Text Generation Inference API
+# Text Generation Inference API
 
 ### To load api
 ```
@@ -8,7 +8,7 @@ This will load the api, but will not register any models or load any workers. It
 
 ### To register a model with an initial number of workers
 ```
-curl -X POST "http://localhost:8081/models?url={model_name}.mar&initial_workers={num_workers}"
+curl -X POST "http://localhost:8081/models?url={model_name}.tar.gz&initial_workers={num_workers}"
 ```
 
 ### To check the status of a model
@@ -37,16 +37,12 @@ Note that the API is not set up for batching, so `prompt` should be a string.
    ```
    singularity run --nv /scratch/serve.sif /bin/bash
    ```
-2. Download weights from HuggingFace to `/scratch/serve/model_store/{model_name}`
-3. Zip the model weights
-   ```
-   cd /scratch/serve/model_store/{model_name}
-   zip -r /scratch/serve/model_store/{model_name}.zip *
-   ```
-4. Create `.mar` runtime file
+2. Create a handler for handling requests (See example handlers)
+3. Create a model configuration file (See examples in `/scratch/serve/model_store`)
+4. Create `.tar.gz` runtime file
    ```
    cd /scratch/serve/model_store
-   torch-model-archiver --model-name {model_name} --version 1.0 --handler /scratch/serve/custom_handler/text_generation_handler.py --extra-files {model_name}.zip -r requirements.txt -f
+   torch-model-archiver --model-name {model_name} --version 1.0 --handler /scratch/serve/custom_handler/{handler}.py  -r requirements.txt -f -c {model_name}-config.yaml --archive-format tgz
    ```  
 Note that the handler assumes that each model can fit on a single GPU. Also, if you need any additional packages to run the model, add them to the /scratch/serve/model_store/requirements.txt before creating the `.mar` file.
 
