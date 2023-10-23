@@ -93,72 +93,73 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         logger.info("Extracting Model")
 
         # What follows is some ugly code to map devices appropriately.
+        mem = int(ctx.model_yaml_config["handler"]["gpu_max_memory"])
         if num_gpu_per_model == 1: # fp4 or nf4
             max_memory = {
-                0 : "0GiB",
-                1 : "0GiB",
-                2 : "0GiB",
-                3 : "0GiB",
-                4 : "0GiB",
-                5 : "0GiB",
-                6 : "0GiB",
-                7 : "0GiB",
+                0 : 0,
+                1 : 0,
+                2 : 0,
+                3 : 0,
+                4 : 0,
+                5 : 0,
+                6 : 0,
+                7 : 0,
             }
-            max_memory[properties.get("gpu_id")] = "48GiB"
+            max_memory[properties.get("gpu_id")] = mem
             self.device = torch.device("cuda:" + str(properties.get("gpu_id")))
         elif num_gpu_per_model == 2: # int8
             max_memory = {
-                0 : "0GiB",
-                1 : "0GiB",
-                2 : "0GiB",
-                3 : "0GiB",
-                4 : "0GiB",
-                5 : "0GiB",
-                6 : "0GiB",
-                7 : "0GiB",
+                0 : 0,
+                1 : 0,
+                2 : 0,
+                3 : 0,
+                4 : 0,
+                5 : 0,
+                6 : 0,
+                7 : 0,
             }
             assigned_gpu = properties.get("gpu_id")
             logger.info(assigned_gpu)
             if assigned_gpu in [0, 4]:
-                max_memory[0] = "48GiB"
-                max_memory[1] = "48GiB"
+                max_memory[0] = mem
+                max_memory[1] = mem
                 self.device = torch.device("cuda:0")
             elif assigned_gpu in [1, 5]:
-                max_memory[2] = "48GiB"
-                max_memory[3] = "48GiB"
+                max_memory[2] = mem
+                max_memory[3] = mem
                 self.device = torch.device("cuda:2")
             elif assigned_gpu in [2, 6]:
-                max_memory[4] = "48GiB"
-                max_memory[5] = "48GiB"
+                max_memory[4] = mem
+                max_memory[5] = mem
                 self.device = torch.device("cuda:4")
             else: 
-                max_memory[6] = "48GiB"
-                max_memory[7] = "48GiB"
+                max_memory[6] = mem
+                max_memory[7] = mem
                 self.device = torch.device("cuda:6")
         else: # 4 gpu per model (half or mixed precision)
-            if properties.get("gpu_id") % 2 == 0: #0, 2, 4, 6
+            if properties.get("gpu_id") % 2 == 0: #0, 1, 2, 3
                 self.device = torch.device("cuda:0")
                 max_memory = {
-                    0 : "48GiB",
-                    1 : "48GiB",
-                    2 : "48GiB",
-                    3 : "48GiB",
-                    4 : "0GiB",
-                    5 : "0GiB",
-                    6 : "0GiB",
-                    7 : "0GiB",
+                    0 : mem,
+                    1 : mem,
+                    2 : mem,
+                    3 : mem,
+                    4 : 0,
+                    5 : 0,
+                    6 : 0,
+                    7 : 0,
                 }
-            else: #1, 3, 5, 7
+            else: #4, 5, 6, 7
                 self.device = torch.device("cuda:4")
                 max_memory = {
-                    0 : "0GiB",
-                    1 : "0GiB",
-                    2 : "0GiB",
-                    3 : "0GiB",
-                    4 : "48GiB",
-                    5 : "48GiB",
-                    6 : "48GiB",
-                    7 : "48GiB",
+                    0 : 0,
+                    1 : 0,
+                    2 : 0,
+                    3 : 0,
+                    4 : mem,
+                    5 : mem,
+                    6 : mem,
+                    7 : mem,
                 }
             
         if quantize == "int8":
