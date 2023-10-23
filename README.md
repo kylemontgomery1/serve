@@ -1,10 +1,43 @@
-# Text Generation Inference API
+# AgentInstruct Inference API
 
-### To load api
+### Setup
+The TorchServe API is best run within their official docker container found [here](https://hub.docker.com/r/pytorch/torchserve). This will install all necessary packages. Additional model-specific packages should be put in model_store/requirements.txt, and will be installed when a model is assigned workers. 
+
+### To boot up the api
 ```
-bash /scratch/serve/exe/run.sh
+cd model_store
+export TEMP=/tmp
+torchserve --start --ncs --ts-config config.properties
+
 ```
-This will load the api, but will not register any models or load any workers. It requires all the GPU's in the node to be empty, since it will run them in exclusive process mode.
+This will load the api, but will not register any models or load any workers.
+
+### Handler and model config
+Each model should have an associated handler file and a model configuration. 
+A handler file contains 4 key functions:
+    1. initialize (initalize workers)
+    2. preprocess (preprocess request)
+    3. inference (executre request)
+    4. postprocess (return request)
+Our handling code was adapted from [TogetherAI](https://github.com/togethercomputer/Quick_Deployment_HELM) to insure continuity between our early experimentation and main results. Handler's can contain model-specific code. For example, out Llama-2-chat handlers adapt the raw request into Meta's chat format, and our Llama-2-70b and Llama-2-70b-chat handlers contain options to better map workers to GPUs, as well as various quantization options.
+
+An example model config for Llama-2-70b-chat is as follows:
+```
+responseTimeout: 5000
+torchrun:
+    nproc-per-node: 1 
+handler:
+    model_path: "/path/to/model/checkpoint"
+    quantize: "nf4"
+    num_gpu_per_model: 1
+    gpu_max_memory: 4.8e10 # note we assume a homogeneous gpu setup.
+```
+Variables set in the model config can be directly accessed by the handler. For example `ctx.model_yaml_config["handler"]["model_path"]` will grab the model path specified in the config.
+
+To generate a runtime file for a model, run
+```
+torch-model-archiver --model-name [model_name] --version 1.0 --handler /scratch/serve/custom_handler/[model_name]-handler.py  -r requirements.txt -f -c [model_name]-config.yaml --archive-format tgz
+```
 
 ### To register a model with an initial number of workers
 ```
@@ -17,6 +50,7 @@ curl http://localhost:8081/models/{model_name}
 ```
 
 ### To send an inference request to a model
+Inference requests will be sent over localhost:8080, and api management is through localhost:8081.
 ```
 endpoint = 'http://0.0.0.0:8080/predictions/{model_name}'
 response = requests.post(endpoint, json={
@@ -32,37 +66,7 @@ response = requests.post(endpoint, json={
 ```
 Note that the API is not set up for batching, so `prompt` should be a string.
 
-### To deploy additional models
-1. Launch singularity shell
-   ```
-   singularity run --nv /scratch/serve.sif /bin/bash
-   ```
-2. Create a handler for handling requests (See example handlers)
-3. Create a model configuration file (See examples in `/scratch/serve/model_store`)
-4. Create `.tar.gz` runtime file
-   ```
-   cd /scratch/serve/model_store
-   torch-model-archiver --model-name {model_name} --version 1.0 --handler /scratch/serve/custom_handler/{handler}.py  -r requirements.txt -f -c {model_name}-config.yaml --archive-format tgz
-   ```  
-Note that the handler assumes that each model can fit on a single GPU. Also, if you need any additional packages to run the model, add them to the /scratch/serve/model_store/requirements.txt before creating the `.mar` file.
-
 ### To stop the api
 ```
-singularity run --nv /scratch/serve.sif /bin/bash
-export TEMP=/scratch/tmp
 torchserve --stop
 ```
-
-## Beware the following sections. Worker reallocation is a bit tricky, as the workers often crash or try to run on gpus alread in use. You're much better off if you can assign workers when you register the model.
-
-### To add/increase workers for a model
-```
-curl -v -X PUT "http://localhost:8081/models/{model_name}?min_worker={num_workers}"
-```
-
-### To remove/decrease workers for a model
-
-```
-curl -v -X PUT "http://localhost:8081/models/{model_name}?min_worker={num_workers}"
-```
-Be careful not to assign more than 8 workers in total between all models, otherwise models may start to OOM. So always remove workers before adding workers.
