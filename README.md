@@ -15,10 +15,12 @@ This will load the api, but will not register any models or load any workers.
 ### Handler and model config
 Each model should have an associated handler file and a model configuration. 
 A handler file contains 4 key functions:
+
     1. initialize (initalize workers)
     2. preprocess (preprocess request)
     3. inference (executre request)
     4. postprocess (return request)
+    
 Our handling code was adapted from [TogetherAI](https://github.com/togethercomputer/Quick_Deployment_HELM) to insure continuity between our early experimentation and main results. Handler's can contain model-specific code. For example, out Llama-2-chat handlers adapt the raw request into Meta's chat format, and our Llama-2-70b and Llama-2-70b-chat handlers contain options to better map workers to GPUs, as well as various quantization options.
 
 An example model config for Llama-2-70b-chat is as follows:
