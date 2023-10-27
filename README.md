@@ -7,6 +7,8 @@ python ./ts_scripts/install_dependencies.py --cuda=cu117
 ```
 where cu117 correspond to CUDA 11.7. Adjust as needed. Additional model-specific packages should be put in model_store/requirements.txt, and will be installed when a model is assigned workers. 
 
+Then adjust the ```model_store``` path in ```serve/model_store/config.properties```. 
+
 ### To boot up the api
 ```
 cd model_store
