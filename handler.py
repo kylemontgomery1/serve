@@ -100,6 +100,8 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         requests = requests[0]["body"]
         requests = {k: v for k, v in requests.items() if v is not None}
         
+        logger.info(requests)
+        
         self.task_info["seed"] = get_int(requests.get("seed", 0), default=0)
         if isinstance(str(requests['prompt']), str):
             self.task_info["prompt_seqs"] = [str(requests['prompt'])]
@@ -118,6 +120,8 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         self.task_info["repetition_penalty"] = get_float(requests.get("repetition_penalty", 1.0), default=1.0)
         self.task_info["stop"] = requests.get("stop", [])
         self.task_info["logprobs"] = get_int(requests.get("logprobs", 0), default=0)
+        
+        logger.log(self.task_info)
         
         return None
     
@@ -147,7 +151,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         
         else:
             complete_contexts = self.task_info["prompt_seqs"]
-            with torch.no_grad(), torch.backends.cuda.sdp_kernel( enable_mem_efficient=True):
+            with torch.no_grad(), torch.backends.cuda.sdp_kernel(enable_mem_efficient=True):
                 torch.manual_seed(self.task_info['seed'])
                 np.random.seed(self.task_info['seed'])
                 random.seed(self.task_info['seed'])
@@ -167,9 +171,10 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                     
                     #Format appropriately
                     contexts = [f"[INST]\n{c}\n[\INST]\n\n" for c in contexts]
-                    logger.debug(contexts)
+                    logger.info(contexts)
                     inputs = self.tokenizer(contexts, padding=True, truncation=True, return_tensors="pt").to(self.device)
                     input_length = inputs.input_ids.shape[1]
+                    logger.info(input_length)
 
                     if self.task_info["temperature"] == 0:
                         outputs = self.model.generate(
@@ -206,11 +211,13 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                             output_hidden_states=True,  # return embeddings
                             stopping_criteria=StoppingCriteriaList([StopWordsCriteria(self.task_info["stop"], self.tokenizer)]) if self.task_info.get("stop") else None,
                         )
+                    logger.info(outputs)
                     if output_scores:
                         ### hard code, assume bsz==1
                         n_logprobs = self.task_info["logprobs"]
         
                         # sampled tokens
+                        logger.info(inputs['input_ids'].size(1))
                         token_ids = outputs.sequences[0, inputs['input_ids'].size(1):].tolist()
                         tokens = self.tokenizer.convert_ids_to_tokens(token_ids)
 
@@ -256,11 +263,13 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                     logging.debug(f"[INFO] raw token: {token}")
                     output = self.tokenizer.decode(token, skip_special_tokens=True)
                     logging.debug(f"[INFO] beam {beam_id}: \n[Context]\n{contexts}\n\n[Output]\n{output}\n")
+                    logger.info(output)
+                    logger.info(post_processing_text(output, self.task_info["stop"], self.deny_list))
                     choice = {
                     "text": post_processing_text(output, self.task_info["stop"], self.deny_list),
                     "index": beam_id,
                     "finish_reason": "length"
-                }
+                    }
                 if output_scores:
                     choice['logprobs'] = logprobs_buffer[0]
                 item['choices'].append(choice)
@@ -301,6 +310,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             "choices": inference_results['choices'],
             "raw_compute_time": self.time_elapsed,
         }
+        logger.info(result)
         
         return [result]
     
