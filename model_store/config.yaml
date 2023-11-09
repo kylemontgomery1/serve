@@ -1,0 +1,7 @@
+responseTimeout: 5000
+torchrun:
+    nproc-per-node: 1
+handler:
+    model_path: "/scratch/weights/hub/models--togethercomputer--Llama-2-7B-32K-Instruct/snapshots/b050a6f17d46e32c4b90a30492f14746589f74b7"
+   
+
