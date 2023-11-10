@@ -171,6 +171,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                     contexts = [f"[INST]\n{c}\n[\INST]\n\n" for c in contexts]
                     logger.info(f"Input text: {contexts}")
                     inputs = self.tokenizer(contexts, padding=True, truncation=True, return_tensors="pt").to(self.device)
+                    logger.info(f"Input text: {[self.tokenizer.decode(token, skip_special_tokens=True)]}")
                     input_length = inputs.input_ids.shape[1]
                     logger.info(f"Input length: {input_length}")
 
@@ -254,13 +255,15 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             if len(complete_contexts) == 1:
                 item = {'choices': [], }
                 for beam_id in range(self.task_info["beam_width"]):
-
+                    logger.info(f"raw tokens: {[outputs.sequences[beam_id]]}")
                     token = outputs.sequences[beam_id, input_length:]  # exclude context input from the output
+                    logger.info(f"Input length: {input_length}")
+                    logger.info(f"processed tokens: {[outputs.sequences[beam_id, input_length:]]}")
                     # logging.debug(f"[INFO] raw token: {token}")
                     output = self.tokenizer.decode(token, skip_special_tokens=True)
                     # logging.debug(f"[INFO] beam {beam_id}: \n[Context]\n{contexts}\n\n[Output]\n{output}\n")
-                    logger.info(f"Decoded output: {output}")
-                    logger.info(f"Processed decoded output: {output}")
+                    logger.info(f"Decoded output: {[output]}")
+                    logger.info(f"Processed decoded output: {[post_processing_text(output, self.task_info["stop"], self.deny_list)]}")
                     choice = {
                     "text": post_processing_text(output, self.task_info["stop"], self.deny_list),
                     "index": beam_id,
