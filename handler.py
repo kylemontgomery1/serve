@@ -121,7 +121,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         self.task_info["stop"] = requests.get("stop", [])
         self.task_info["logprobs"] = get_int(requests.get("logprobs", 0), default=0)
         
-        logger.log(self.task_info)
+        logger.info(self.task_info)
         
         return None
     
