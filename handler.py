@@ -168,13 +168,13 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                     contexts = complete_contexts[iter_i * batch_size: (iter_i + 1) * batch_size]
                     
                     #Format appropriately
-                    contexts = [f"[INST]\n{c}\n[\INST]\n\n" for c in contexts]
-                    logger.info(f"Input text: {contexts}")
+                    # contexts = [f"[INST]\n{c}\n[\INST]\n\n" for c in contexts]
+                    # logger.info(f"Input text: {contexts}")
                     inputs = self.tokenizer(contexts, padding=True, truncation=True, return_tensors="pt").to(self.device)
-                    logger.info(f"Input ids: {inputs.input_ids}")
-                    logger.info(f"Input text: {[self.tokenizer.decode(inputs.input_ids[0], skip_special_tokens=True)]}")
+                    # logger.info(f"Input ids: {inputs.input_ids}")
+                    # logger.info(f"Input text: {[self.tokenizer.decode(inputs.input_ids[0], skip_special_tokens=True)]}")
                     input_length = inputs.input_ids.shape[1]
-                    logger.info(f"Input length: {input_length}")
+                    # logger.info(f"Input length: {input_length}")
 
                     if self.task_info["temperature"] == 0:
                         outputs = self.model.generate(
@@ -256,13 +256,13 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             if len(complete_contexts) == 1:
                 item = {'choices': [], }
                 for beam_id in range(self.task_info["beam_width"]):
-                    logger.info(f"raw tokens: {[outputs.sequences[beam_id]]}")
-                    logger.info(f"raw tokens decoded: {[self.tokenizer.decode(outputs.sequences[beam_id], skip_special_tokens=True)]}")
+                    # logger.info(f"raw tokens: {[outputs.sequences[beam_id]]}")
+                    # logger.info(f"raw tokens decoded: {[self.tokenizer.decode(outputs.sequences[beam_id], skip_special_tokens=True)]}")
                     token = outputs.sequences[beam_id, input_length:]  # exclude context input from the output
-                    logger.info(f"processed tokens: {[outputs.sequences[beam_id, input_length:]]}")
-                    logger.info(f"processed tokens decoded: {[self.tokenizer.decode(outputs.sequences[beam_id, input_length:], skip_special_tokens=True)]}")
+                    # logger.info(f"processed tokens: {[outputs.sequences[beam_id, input_length:]]}")
+                    # logger.info(f"processed tokens decoded: {[self.tokenizer.decode(outputs.sequences[beam_id, input_length:], skip_special_tokens=True)]}")
                     output = self.tokenizer.decode(token, skip_special_tokens=True)
-                    logger.info(f"Decoded output: {[output]}")
+                    # logger.info(f"Decoded output: {[output]}")
                     choice = {
                     "text": post_processing_text(output, self.task_info["stop"], self.deny_list),
                     "index": beam_id,
