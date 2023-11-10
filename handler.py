@@ -44,7 +44,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         self.max_batch_size = 1
         self.deny_list = []
         model_path = ctx.model_yaml_config["handler"]["model_path"]
-        logger.debug(ctx)
+        # logger.debug(ctx)
         
         self.device = torch.device(
             "cuda:" + str(properties.get("gpu_id"))
@@ -100,7 +100,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         requests = requests[0]["body"]
         requests = {k: v for k, v in requests.items() if v is not None}
         
-        logger.info(requests)
+        logger.info(f"Request: {requests}")
         
         self.task_info["seed"] = get_int(requests.get("seed", 0), default=0)
         if isinstance(str(requests['prompt']), str):
@@ -120,8 +120,6 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         self.task_info["repetition_penalty"] = get_float(requests.get("repetition_penalty", 1.0), default=1.0)
         self.task_info["stop"] = requests.get("stop", [])
         self.task_info["logprobs"] = get_int(requests.get("logprobs", 0), default=0)
-        
-        logger.info(self.task_info)
         
         return None
     
@@ -171,10 +169,10 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                     
                     #Format appropriately
                     contexts = [f"[INST]\n{c}\n[\INST]\n\n" for c in contexts]
-                    logger.info(contexts)
+                    logger.info(f"Input text: {contexts}")
                     inputs = self.tokenizer(contexts, padding=True, truncation=True, return_tensors="pt").to(self.device)
                     input_length = inputs.input_ids.shape[1]
-                    logger.info(input_length)
+                    logger.info(f"Input length: {input_length}")
 
                     if self.task_info["temperature"] == 0:
                         outputs = self.model.generate(
@@ -211,14 +209,12 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                             output_hidden_states=True,  # return embeddings
                             stopping_criteria=StoppingCriteriaList([StopWordsCriteria(self.task_info["stop"], self.tokenizer)]) if self.task_info.get("stop") else None,
                         )
-                    logger.info(outputs)
                     if output_scores:
                         ### hard code, assume bsz==1
                         n_logprobs = self.task_info["logprobs"]
         
                         # sampled tokens
-                        logger.info(inputs['input_ids'].size(1))
-                        token_ids = outputs.sequences[0, inputs['input_ids'].size(1):].tolist()
+                        token_ids = outputs.sequences[0, input_length:].tolist()
                         tokens = self.tokenizer.convert_ids_to_tokens(token_ids)
 
                         logprobs_dict = {
@@ -260,11 +256,11 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                 for beam_id in range(self.task_info["beam_width"]):
 
                     token = outputs.sequences[beam_id, input_length:]  # exclude context input from the output
-                    logging.debug(f"[INFO] raw token: {token}")
+                    # logging.debug(f"[INFO] raw token: {token}")
                     output = self.tokenizer.decode(token, skip_special_tokens=True)
-                    logging.debug(f"[INFO] beam {beam_id}: \n[Context]\n{contexts}\n\n[Output]\n{output}\n")
-                    logger.info(output)
-                    logger.info(post_processing_text(output, self.task_info["stop"], self.deny_list))
+                    # logging.debug(f"[INFO] beam {beam_id}: \n[Context]\n{contexts}\n\n[Output]\n{output}\n")
+                    logger.info(f"Decoded output: {output}")
+                    logger.info(f"Processed decoded output: {output}")
                     choice = {
                     "text": post_processing_text(output, self.task_info["stop"], self.deny_list),
                     "index": beam_id,
@@ -283,9 +279,9 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
 
                         for beam_id in range(beam_width):
                             token = outputs.sequences[sample_id * beam_width + beam_id, input_length:]
-                            logging.debug(f"[INFO] raw token: {token}")
+                            # logging.debug(f"[INFO] raw token: {token}")
                             output = self.tokenizer.decode(token, skip_special_tokens=True)
-                            logging.debug(f"[INFO] beam {beam_id}: \n[Context]\n{contexts}\n\n[Output]\n{output}\n")
+                            # logging.debug(f"[INFO] beam {beam_id}: \n[Context]\n{contexts}\n\n[Output]\n{output}\n")
                             choice = {
                                 "text": post_processing_text(output, self.task_info["stop"], self.deny_list),
                                 "index": beam_id,
@@ -310,7 +306,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             "choices": inference_results['choices'],
             "raw_compute_time": self.time_elapsed,
         }
-        logger.info(result)
+        logger.info("Response: {result}")
         
         return [result]
     
