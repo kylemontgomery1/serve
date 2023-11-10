@@ -171,7 +171,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                     contexts = [f"[INST]\n{c}\n[\INST]\n\n" for c in contexts]
                     logger.info(f"Input text: {contexts}")
                     inputs = self.tokenizer(contexts, padding=True, truncation=True, return_tensors="pt").to(self.device)
-                    logger.info(f"Input text: {[self.tokenizer.decode(token, skip_special_tokens=True)]}")
+                    logger.info(f"Input text: {[self.tokenizer.decode(inputs.input_ids[0], skip_special_tokens=True)]}")
                     input_length = inputs.input_ids.shape[1]
                     logger.info(f"Input length: {input_length}")
 
@@ -263,7 +263,6 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                     output = self.tokenizer.decode(token, skip_special_tokens=True)
                     # logging.debug(f"[INFO] beam {beam_id}: \n[Context]\n{contexts}\n\n[Output]\n{output}\n")
                     logger.info(f"Decoded output: {[output]}")
-                    logger.info(f"Processed decoded output: {[post_processing_text(output, self.task_info["stop"], self.deny_list)]}")
                     choice = {
                     "text": post_processing_text(output, self.task_info["stop"], self.deny_list),
                     "index": beam_id,
