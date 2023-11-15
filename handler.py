@@ -5,6 +5,7 @@ import random
 import timeit
 import math
 from functools import wraps
+import gc
 
 import torch
 import transformers
@@ -96,6 +97,8 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         Returns:
             list : The preprocess function returns a list of Tensor for the size of the word tokens.
         """
+        gc.collect()
+        torch.cuda.empty_cache()
         
         requests = requests[0]["body"]
         requests = {k: v for k, v in requests.items() if v is not None}
