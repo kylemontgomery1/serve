@@ -39,13 +39,11 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             ctx (context): It is a JSON Object containing information
             pertaining to the model artefacts parameters.
         """
-        self.manifest = ctx.manifest
         properties = ctx.system_properties
         model_dir = properties.get("model_dir")
         self.max_batch_size = 1
         self.deny_list = []
         model_path = ctx.model_yaml_config["handler"]["model_path"]
-        # logger.debug(ctx)
         
         self.device = torch.device(
             "cuda:" + str(properties.get("gpu_id"))
@@ -65,7 +63,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             "len_penalty": 0,
             "repetition_penalty": 1.0,
             "stop": [],
-            "logprobs": 0,
+            # "logprobs": 0,
         }
             
         logger.info("Extracting Tokenizer")
@@ -120,7 +118,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         self.task_info["len_penalty"] = get_float(requests.get("len_penalty", 0.0), default=0.0)
         self.task_info["repetition_penalty"] = get_float(requests.get("repetition_penalty", 1.0), default=1.0)
         self.task_info["stop"] = requests.get("stop", [])
-        self.task_info["logprobs"] = get_int(requests.get("logprobs", 0), default=0)
+        # self.task_info["logprobs"] = get_int(requests.get("logprobs", 0), default=0)
         
         return None
     
@@ -136,7 +134,6 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         """
         
         if len(self.task_info["prompt_seqs"][0]) == 0 or self.task_info["output_len"] == 0:
-            inference_result = []
             item = {'choices': [], }
             for beam_id in range(self.task_info["beam_width"]):
                 choice = {
@@ -151,39 +148,29 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
         else:
             complete_contexts = self.task_info["prompt_seqs"]
             with torch.no_grad(), torch.backends.cuda.sdp_kernel(enable_mem_efficient=True):
+                
                 torch.manual_seed(self.task_info['seed'])
                 np.random.seed(self.task_info['seed'])
                 random.seed(self.task_info['seed'])
+                
                 batch_size = min(len(complete_contexts), self.max_batch_size)
                 num_iter = math.ceil(len(complete_contexts) / batch_size)
                 output_buffer = []
-                logprobs_buffer = []
-                output_scores = self.task_info["logprobs"] > 0
-                if output_scores:
-                    logprobs_buffer = []
-                else:
-                    logprobs_buffer = None
 
                 time = timeit.default_timer()
                 for iter_i in range(num_iter):
                     contexts = complete_contexts[iter_i * batch_size: (iter_i + 1) * batch_size]
                     
-                    #Format appropriately
-                    # contexts = [f"[INST]\n{c}\n[\INST]\n\n" for c in contexts]
-                    # logger.info(f"Input text: {contexts}")
                     inputs = self.tokenizer(contexts, padding=True, truncation=True, return_tensors="pt").to(self.device)
-                    # logger.info(f"Input ids: {inputs.input_ids}")
-                    # logger.info(f"Input text: {[self.tokenizer.decode(inputs.input_ids[0], skip_special_tokens=True)]}")
                     input_length = inputs.input_ids.shape[1]
-                    # logger.info(f"Input length: {input_length}")
 
                     if self.task_info["temperature"] == 0:
                         outputs = self.model.generate(
                             **inputs, do_sample=False, 
                             max_new_tokens=self.task_info["output_len"],
                             return_dict_in_generate=True,
-                            output_scores=output_scores,  # return logit score
-                            output_hidden_states=True,  # return embeddings
+                            output_scores=False,  # return logit score
+                            output_hidden_states=False,  # return embeddings
                         )
                     else:
                         class StopWordsCriteria(StoppingCriteria):
@@ -196,6 +183,7 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                                 self._cache_str += self.tokenizer.decode(input_ids[0, -1])
                                 for stop_words in self.stop_words:
                                     if stop_words in self._cache_str:
+                                        del self.cashe_str
                                         return True
                                 return False
     
@@ -208,46 +196,10 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
                             temperature=self.task_info["temperature"],
                             max_new_tokens=self.task_info["output_len"],
                             return_dict_in_generate=True,
-                            output_scores=output_scores,  # return logit score
-                            output_hidden_states=True,  # return embeddings
+                            output_scores=False,  # return logit score
+                            output_hidden_states=False,  # return embeddings
                             stopping_criteria=StoppingCriteriaList([StopWordsCriteria(self.task_info["stop"], self.tokenizer)]) if self.task_info.get("stop") else None,
                         )
-                    if output_scores:
-                        ### hard code, assume bsz==1
-                        n_logprobs = self.task_info["logprobs"]
-        
-                        # sampled tokens
-                        token_ids = outputs.sequences[0, input_length:].tolist()
-                        tokens = self.tokenizer.convert_ids_to_tokens(token_ids)
-
-                        logprobs_dict = {
-                            'tokens': tokens,
-                            'token_logprobs': [],
-                            'top_logprobs': [],
-                        }
-
-                        # last layer hidden states
-                        hids = [outputs.hidden_states[0][-1][:, -1:]]
-                        hids += [hid[-1] for hid in outputs.hidden_states[1:]]
-                        hids = torch.cat(hids, dim=1)
-                        # origianl logits
-                        logits = self.model.get_output_embeddings()(hids)
-                        logprobs = logits.log_softmax(-1)
-                        values, indices = logprobs.topk(n_logprobs, dim=-1)
-
-                        for i in range(indices.size(1)):
-                            selected_token_id = token_ids[i]
-                            # topk tokens
-                            tokens = self.tokenizer.convert_ids_to_tokens(indices[0, i])
-                            # topk scores
-                            scores = values[0, i].tolist()
-
-                            logprobs_dict['token_logprobs'].append(logprobs[0, i, selected_token_id].item())
-                            logprobs_dict['top_logprobs'].append({
-                                t: s for t,s in zip(tokens, scores)
-                            })
-                            
-                        logprobs_buffer.append(logprobs_dict)
                         
                     output_buffer.append(outputs)
                 time_elapsed = timeit.default_timer() - time
@@ -257,20 +209,13 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
             if len(complete_contexts) == 1:
                 item = {'choices': [], }
                 for beam_id in range(self.task_info["beam_width"]):
-                    # logger.info(f"raw tokens: {[outputs.sequences[beam_id]]}")
-                    # logger.info(f"raw tokens decoded: {[self.tokenizer.decode(outputs.sequences[beam_id], skip_special_tokens=True)]}")
                     token = outputs.sequences[beam_id, input_length:]  # exclude context input from the output
-                    # logger.info(f"processed tokens: {[outputs.sequences[beam_id, input_length:]]}")
-                    # logger.info(f"processed tokens decoded: {[self.tokenizer.decode(outputs.sequences[beam_id, input_length:], skip_special_tokens=True)]}")
                     output = self.tokenizer.decode(token, skip_special_tokens=True)
-                    # logger.info(f"Decoded output: {[output]}")
                     choice = {
                     "text": post_processing_text(output, self.task_info["stop"], self.deny_list),
                     "index": beam_id,
                     "finish_reason": "length"
                     }
-                if output_scores:
-                    choice['logprobs'] = logprobs_buffer[0]
                 item['choices'].append(choice)
                 self.time_elapsed = time_elapsed
             else:
@@ -282,18 +227,13 @@ class TransformersSeqClassifierHandler(BaseHandler, ABC):
 
                         for beam_id in range(beam_width):
                             token = outputs.sequences[sample_id * beam_width + beam_id, input_length:]
-                            # logging.debug(f"[INFO] raw token: {token}")
                             output = self.tokenizer.decode(token, skip_special_tokens=True)
-                            # logging.debug(f"[INFO] beam {beam_id}: \n[Context]\n{contexts}\n\n[Output]\n{output}\n")
                             choice = {
                                 "text": post_processing_text(output, self.task_info["stop"], self.deny_list),
                                 "index": beam_id,
                                 "finish_reason": "length"+str(sample_id)
                             }
-                            if output_scores:
-                                choice['logprobs'] = logprobs_buffer[i_output]
                             item['choices'].append(choice)
-                self.time_elapsed = time_elapsed
                 
         return item
                         
